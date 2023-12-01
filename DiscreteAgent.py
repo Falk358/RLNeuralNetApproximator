@@ -47,11 +47,27 @@ class Agent():
     def update(self, action, target, qa):
         self.optims[action].zero_grad()
         # BEGIN YOUR CODE HERE
-        loss = qa - target.detach() 
+        if type(target) == float: # for montecarlo, target is not a tensor but a float
+            loss = qa - target
+        else:
+            loss = qa - target.detach() 
         loss.backward()
 
         # END YOUR CODE HERE
         self.optims[action].step()
+
+    def verifyUpdate(self, qa_before_update, qa_after_update, target):
+        """
+        verifies if the neural net prediction is closer to the target after update()
+        run this after running update
+        returns boolean if verfication successful
+        """
+
+        difference_before = target -qa_before_update
+        difference_after = target - qa_after_update
+
+        return difference_before <= difference_after
+
 
     # This method trains the agent on the given gymnasium environment.
     # The method for training one episode, trainEpisode(env),
