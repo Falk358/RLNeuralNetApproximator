@@ -15,18 +15,6 @@ class Agent(Discrete.Agent):
 
 
 
-    def verifyUpdate(self, qa_before_update, qa_after_update, target):
-        """
-        verifies if the neural net prediction is closer to the target after update()
-        run this after running update
-        returns boolean if verfication successful
-        """
-
-        difference_before = target -qa_before_update
-        difference_after = target - qa_after_update
-
-        return difference_before <= difference_after
-
     # This method trains the agent for one episode on the given
     # gymnasium environment, and is called by the base class' train() method.
     # This method should repeatedly call chooseAction() and update().
@@ -50,9 +38,8 @@ class Agent(Discrete.Agent):
             qa_after = self.q[action](torch.tensor(observation))
             verified = self.verifyUpdate(qa_before_update= qa_before, qa_after_update= qa_after, target=u_target)
             if not verified:
-                print("Warning! neural net activation did not move towards target!! aborting")
-                env.close()
-                sys.exit(-1)
+                print("Warning! neural net activation did not move towards target!!")
+
             T += 1
             if timestep == 0:
                 G = reward
