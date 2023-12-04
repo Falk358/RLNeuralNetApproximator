@@ -4,7 +4,7 @@ from torch import nn
 import DiscreteMonteCarloAgent as rl
 
 
-env = gym.make('CartPole-v1', max_episode_steps=100)
+env = gym.make('CartPole-v1', max_episode_steps=100, render_mode="human")
 dimObs = env.observation_space.shape[0]
 
 class Q(nn.Module):

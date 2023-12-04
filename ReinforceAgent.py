@@ -9,6 +9,7 @@
 import torch
 import numpy as np
 from random import random
+from pprint import pprint
 
 
 class Agent():
@@ -48,6 +49,20 @@ class Agent():
     # either here or in trainEpisode() below.
     def update(self, t, action, observation, target):
         # BEGIN YOUR CODE HERE
+        if self.jointNN:
+            chosen_activation = self.h(torch.tensor(observation))
+            chosen_activation = torch.log(chosen_activation)
+            self.optim.zero_grad()
+            loss = self.gamma**t * -target * chosen_activation
+            loss.backward()
+            self.optim.step()
+        else:
+            chosen_activation = self.h[action](torch.tensor(observation))
+            chosen_activation = torch.log(chosen_activation)
+            self.optim.zero_grad()
+            loss = self.gamma**t * -target * chosen_activation
+            loss.backward()
+            self.optim.step()
 
         # END YOUR CODE HERE
 
@@ -62,6 +77,19 @@ class Agent():
     def save(self, file):
         np.save(file, self.episodes)        
 
+
+    def verifyUpdate(self, qa_before_update, qa_after_update, target):
+        """
+        verifies if the neural net prediction is closer to the target after update()
+        run this after running update
+        returns boolean if verfication successful
+        """
+
+        difference_before = target -qa_before_update
+        difference_after = target - qa_after_update
+
+        return difference_before <= difference_after
+
     # This method trains the agent for one episode on the given
     # gymnasium environment, and is called by train() above.
     # This method should repeatedly call chooseAction() and update().
@@ -71,6 +99,32 @@ class Agent():
     # This code will be very similar to DiscreteMonteCarloAgent.trainEpisode().
     def trainEpisode(self, env):
         # BEGIN YOUR CODE HERE
+        print("-----------------new episode -------------------------")
+        observation, info = env.reset()
+        T = 0
+        G = 0.0 
+        for timestep in range(1000):
+            pprint(observation)
+            action = self.chooseAction(observation)
+            observation, reward, terminated, truncated, info = env.step(action)
+            T += 1
+            if timestep == 0:
+                G = reward
+            else:
+                G += (self.gamma**timestep) * reward
+            u_target = G
+            qa_before = self.h[action](torch.tensor(observation))
+            self.update(t=timestep, action= action, target= u_target, observation = observation)
+            qa_after = self.h[action](torch.tensor(observation))
+            verified = self.verifyUpdate(qa_before_update=qa_before, qa_after_update=qa_after, target= u_target)
+            if not verified:
+                print("Warning! updated neural net activation did not move towards target!!!")
+            if terminated or truncated:
+                print("environment terminated with info: ")
+                pprint(info)
+                observation, _ = env.reset()
+                break
+
 
         # END YOUR CODE HERE
         return T, G
