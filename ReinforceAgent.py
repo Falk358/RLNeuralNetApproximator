@@ -57,12 +57,21 @@ class Agent():
             loss.backward()
             self.optim.step()
         else:
-            chosen_activation = self.h[action](torch.tensor(observation))
-            chosen_activation = torch.log(chosen_activation)
+            activations = []
+            for current_h in self.h:
+                activations.append(current_h(torch.tensor(observation)))
+            
+            activations_appended = torch.cat(activations, dim=0)
+            softmax_dist = torch.distributions.Categorical(activations_appended)
+            log_prob_action = softmax_dist.log_prob(torch.tensor(action, requires_grad=False))
             self.optim.zero_grad()
-            loss = self.gamma**t * -target * chosen_activation
+            loss = self.gamma**t * -target * log_prob_action
             loss.backward()
             self.optim.step()
+
+
+
+
 
         # END YOUR CODE HERE
 
@@ -104,7 +113,7 @@ class Agent():
         T = 0
         G = 0.0 
         for timestep in range(1000):
-            pprint(observation)
+            #pprint(observation)
             action = self.chooseAction(observation)
             observation, reward, terminated, truncated, info = env.step(action)
             T += 1

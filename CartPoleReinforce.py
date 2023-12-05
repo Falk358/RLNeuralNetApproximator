@@ -13,14 +13,16 @@ class H(nn.Module):
         # BEGIN YOUR CODE HERE
         self.fc_input = nn.Linear(dimObs, 8)
         self.relu = nn.ReLU()
-        self.fc_output = nn.Linear(8, 1)
+        self.fc_middle = nn.Linear(8, 1)
+        self.softmax = nn.Softmax()
 
         # END YOUR CODE HERE
 
     def forward(self, x):
         x = self.fc_input(x)
         x = self.relu(x)
-        x = self.fc_output(x)
+        x = self.fc_middle(x)
+        x = self.softmax(x)
         return x
 
 
