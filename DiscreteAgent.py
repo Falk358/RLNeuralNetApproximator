@@ -47,7 +47,7 @@ class Agent():
     def update(self, action, target, qa):
         self.optims[action].zero_grad()
         # BEGIN YOUR CODE HERE
-        if type(target) == float: # for montecarlo, target is not a tensor but a float
+        if type(target) != torch.tensor: # for montecarlo, target is not a tensor but a float
             loss = qa - target
         else:
             loss = qa - target.detach() 

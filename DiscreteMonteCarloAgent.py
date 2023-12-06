@@ -1,6 +1,7 @@
 # Base class for RL agents for episodic tasks
 # - derived from DiscreteAgent
 
+import numpy as np
 import torch
 from pprint import pprint
 import DiscreteAgent as Discrete
@@ -24,26 +25,32 @@ class Agent(Discrete.Agent):
         observation, info = env.reset()
         T = 0
         G = 0.0 
-        for timestep in range(1000):
-            action, action_value = self.chooseAction(observation, action_space)
+        rewards = []
+        states = []
+        actions = []
+        while True:
+            action, _ = self.chooseAction(observation, action_space)
             observation, reward, terminated, truncated, info = env.step(action)
+            rewards.append(reward)
+            states.append(torch.tensor(observation).detach())
+            actions.append(action)  
             T += 1
-            if timestep == 0:
-                G = reward
-            else:
-                G += (self.gamma**timestep) * reward
-            u_target = G
-            qa_before = self.q[action](torch.tensor(observation))
-            self.update(action= action, target= u_target, qa = qa_before)
-            qa_after = self.q[action](torch.tensor(observation))
-            verified = self.verifyUpdate(qa_before_update=qa_before, qa_after_update=qa_after, target= u_target)
-            if not verified:
-                print("Warning! updated neural net activation did not move towards target!!!")
             if terminated or truncated:
                 print("environment terminated with info: ")
                 pprint(info)
                 observation, _ = env.reset()
                 break
+        
+        discounted_rewards = np.zeros_like(rewards)
+        for i in reversed(range(len(rewards))):
+            G = G * self.gamma + rewards[i]
+            discounted_rewards[i] = G
+
+        for i in range(len(discounted_rewards)):
+            self.update(action=actions[i], target=discounted_rewards[i], qa= self.q[actions[i]](states[i]))
+
+
+        
 
 
         # END YOUR CODE HERE
