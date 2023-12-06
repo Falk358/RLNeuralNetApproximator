@@ -50,18 +50,16 @@ class Agent():
     def update(self, t, action, observation, target):
         # BEGIN YOUR CODE HERE
         if self.jointNN:
-            activations = self.h(torch.tensor(observation, requires_grad=False))
-            activations.retain_grad()
+            activations = self.h(torch.tensor(observation))
             activations_softmax = torch.softmax(activations, dim=0) 
             print(f" shape of softmax activations of neural net: {activations_softmax.shape}")
             prob_action = activations_softmax[action]
-            prob_action.retain_grad()
-            denominator_activation = torch.clone(prob_action).detach()
+            divisor_activation = torch.clone(prob_action).detach()
             self.optim.zero_grad()
-            loss = self.gamma**t * -target * torch.div(prob_action, denominator_activation) *  activations[action]
-            loss.backward()
+            loss = self.gamma**t * target * -torch.div(prob_action, divisor_activation)   
+            #gradient_standin = torch.tensor([1.0, 1.0], dtype=torch.float)
+            loss.backward() # pass gradient standin because we have a two dim tensor (activations) passed to it (vector jacobian) to pytorch autograd engine
             self.optim.step()
-            print(f"prob_action grad {activations.grad}")
         else:
             activations = []
             for current_h in self.h:
