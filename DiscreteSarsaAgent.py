@@ -31,7 +31,19 @@ class Agent(Discrete.Agent):
         for timestep in range(1000):
             action, action_value = self.chooseAction(observation, action_space)
             observation, reward, terminated, truncated, info = env.step(action)
+            T += 1
+            if timestep == 0:
+                G = reward
+            else:
+                G += (self.gamma**timestep) * reward
+
             qa_before = self.q[action](torch.tensor(observation))
+            if terminated or truncated:
+                print("environment terminated with info: ")
+                pprint(info)
+                self.update(action = action, target= 0.0, qa=qa_before)
+                observation, _ = env.reset()
+                break
             u_target = qa_before  * self.gamma + reward
             self.update(action= action, target= u_target, qa = qa_before)
 
@@ -40,16 +52,6 @@ class Agent(Discrete.Agent):
             if not verified:
                 print("Warning! neural net activation did not move towards target!!")
 
-            T += 1
-            if timestep == 0:
-                G = reward
-            else:
-                G += (self.gamma**timestep) * reward
-            if terminated or truncated:
-                print("environment terminated with info: ")
-                pprint(info)
-                observation, _ = env.reset()
-                break
 
 
         # END YOUR CODE HERE

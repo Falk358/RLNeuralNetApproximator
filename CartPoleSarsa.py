@@ -28,7 +28,7 @@ import sys
 run = int(sys.argv[1]) if len(sys.argv) == 2 else None
 
 # Play with gamma, alpha, and perhaps other pararameters:
-agent = rl.Agent(Q, env.action_space.n, gamma=1, alpha=0.0004)
+agent = rl.Agent(Q, env.action_space.n, gamma=0.7, alpha=0.0004)
 agent.train(env)
 
 env.close()
