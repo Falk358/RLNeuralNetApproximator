@@ -13,8 +13,8 @@ class H(nn.Module):
         # BEGIN YOUR CODE HERE
         self.fc_input = nn.Linear(dimObs, 8)
         self.relu = nn.ReLU()
-        self.fc_middle = nn.Linear(8, 1)
-        self.softmax = nn.Softmax()
+        self.fc_middle = nn.Linear(8, env.action_space.n)
+        self.softmax = nn.Softmax(dim=0)
 
         # END YOUR CODE HERE
 
@@ -30,7 +30,7 @@ import sys
 run = int(sys.argv[1]) if len(sys.argv) == 2 else None
 
 # Play with gamma, alpha, and perhaps other pararameters:
-agent = rl.Agent(H, env.action_space.n, gamma=1, alpha=0.00004)
+agent = rl.Agent(H, env.action_space.n, gamma=1, alpha=0.0001)
 agent.train(env)
 if run is not None:
     agent.save(f"CartPoleReinforce-{run:02d}.npy")

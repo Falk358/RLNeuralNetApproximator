@@ -14,7 +14,7 @@ from pprint import pprint
 
 class Agent():
     def __init__(self, H, nActions, alpha=0.000001, gamma=1,
-                 nEpisodes=25000, jointNN=False):
+                 nEpisodes=25000, jointNN=True):
         self.gamma = gamma
         self.jointNN = jointNN
         if jointNN:
@@ -50,24 +50,36 @@ class Agent():
     def update(self, t, action, observation, target):
         # BEGIN YOUR CODE HERE
         if self.jointNN:
-            chosen_activation = self.h(torch.tensor(observation))
-            chosen_activation = torch.log(chosen_activation)
+            activations = self.h(torch.tensor(observation, requires_grad=False))
+            activations.retain_grad()
+            activations_softmax = torch.softmax(activations, dim=0) 
+            print(f" shape of softmax activations of neural net: {activations_softmax.shape}")
+            prob_action = activations_softmax[action]
+            prob_action.retain_grad()
+            denominator_activation = torch.clone(prob_action).detach()
             self.optim.zero_grad()
-            loss = self.gamma**t * -target * chosen_activation
+            loss = self.gamma**t * -target * torch.div(prob_action, denominator_activation) *  activations[action]
             loss.backward()
             self.optim.step()
+            print(f"prob_action grad {activations.grad}")
         else:
             activations = []
             for current_h in self.h:
-                activations.append(current_h(torch.tensor(observation)))
-            
+                activation = current_h(torch.tensor(observation))
+                activations.append(activation)
+
             activations_appended = torch.cat(activations, dim=0)
             softmax_dist = torch.distributions.Categorical(activations_appended)
-            log_prob_action = softmax_dist.log_prob(torch.tensor(action, requires_grad=False))
+            action_tensor = torch.tensor(action)
+            action_tensor.detach()
+            log_prob_action = softmax_dist.log_prob(action_tensor)
             self.optim.zero_grad()
-            loss = self.gamma**t * -target * log_prob_action
+            loss = self.gamma**t * -target * log_prob_action * self.h[action](torch.tensor(observation).detach())
             loss.backward()
             self.optim.step()
+            print(f"Gradients for activations_appended: {activations_appended.grad}")
+            print(f"Gradients for log_prob_action: {log_prob_action.grad}")
+
 
 
 
@@ -109,31 +121,35 @@ class Agent():
     def trainEpisode(self, env):
         # BEGIN YOUR CODE HERE
         print("-----------------new episode -------------------------")
+        action_space = env.action_space
         observation, info = env.reset()
         T = 0
         G = 0.0 
-        for timestep in range(1000):
-            #pprint(observation)
+        rewards = []
+        states = []
+        actions = []
+        while True:
             action = self.chooseAction(observation)
             observation, reward, terminated, truncated, info = env.step(action)
+            rewards.append(reward)
+            states.append(torch.tensor(observation).detach())
+            actions.append(action)  
             T += 1
-            if timestep == 0:
-                G = reward
-            else:
-                G += (self.gamma**timestep) * reward
-            u_target = G
-            qa_before = self.h[action](torch.tensor(observation))
-            self.update(t=timestep, action= action, target= u_target, observation = observation)
-            qa_after = self.h[action](torch.tensor(observation))
-            verified = self.verifyUpdate(qa_before_update=qa_before, qa_after_update=qa_after, target= u_target)
-            if not verified:
-                print("Warning! updated neural net activation did not move towards target!!!")
             if terminated or truncated:
                 print("environment terminated with info: ")
                 pprint(info)
                 observation, _ = env.reset()
                 break
+        
+        discounted_rewards = np.zeros_like(rewards)
+        for i in reversed(range(len(rewards))):
+            G = G * self.gamma + rewards[i]
+            discounted_rewards[i] = G
 
+        for i in range(len(discounted_rewards)):
+            self.update(t=i, action=actions[i], target=discounted_rewards[i], observation=states[i])
 
+        # END YOUR CODE HERE
+        return T, G
         # END YOUR CODE HERE
         return T, G
