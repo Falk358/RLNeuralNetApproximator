@@ -5,7 +5,7 @@
 # The first argument of its constructor is the class (not instance)
 # derived from torch.nn.Module that implements the h(s) neural net(s).
 # Its constructor must not take any arguments.
-
+import sys
 import torch
 import numpy as np
 from random import random
@@ -60,23 +60,8 @@ class Agent():
             loss.backward() 
             self.optim.step()
         else:
-            activations = []
-            for current_h in self.h:
-                activation = current_h(torch.tensor(observation))
-                activations.append(activation)
-
-            activations_appended = torch.cat(activations, dim=0)
-            softmax_dist = torch.distributions.Categorical(activations_appended)
-            action_tensor = torch.tensor(action)
-            action_tensor.detach()
-            log_prob_action = softmax_dist.log_prob(action_tensor)
-            self.optim.zero_grad()
-            loss = self.gamma**t * -target * log_prob_action * self.h[action](torch.tensor(observation).detach())
-            loss.backward()
-            self.optim.step()
-            print(f"Gradients for activations_appended: {activations_appended.grad}")
-            print(f"Gradients for log_prob_action: {log_prob_action.grad}")
-
+            print("Error! Neural Network architecture only supports single Neural Network!\n please set jointNN=True")
+            sys.exit(-1)
 
 
 

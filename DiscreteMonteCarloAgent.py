@@ -30,10 +30,11 @@ class Agent(Discrete.Agent):
         actions = []
         while True:
             action, _ = self.chooseAction(observation, action_space)
-            observation, reward, terminated, truncated, info = env.step(action)
+            observation_new, reward, terminated, truncated, info = env.step(action)
             rewards.append(reward)
             states.append(torch.tensor(observation).detach())
             actions.append(action)  
+            observation = observation_new
             T += 1
             if terminated or truncated:
                 print("environment terminated with info: ")
@@ -42,11 +43,11 @@ class Agent(Discrete.Agent):
                 break
         
         discounted_rewards = np.zeros_like(rewards)
-        for i in reversed(range(len(rewards))):
-            G = G * self.gamma + rewards[i]
+        for i in reversed(range(len(rewards)-1)):
+            G = G * self.gamma + rewards[i+1]
             discounted_rewards[i] = G
 
-        for i in range(len(discounted_rewards)):
+        for i in reversed(range(len(discounted_rewards)-1)):
             self.update(action=actions[i], target=discounted_rewards[i], qa= self.q[actions[i]](states[i]))
 
 

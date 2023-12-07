@@ -2,7 +2,6 @@
 # - derived from DiscreteAgent
 
 from pprint import pprint
-import sys
 import torch
 import DiscreteAgent as Discrete
 from gymnasium import Env
@@ -26,31 +25,29 @@ class Agent(Discrete.Agent):
         print("-----------------new episode -------------------------")
         action_space = env.action_space
         observation, info = env.reset()
+        action, _ = self.chooseAction(observation, action_space)
         T = 0
         G = 0.0 
-        for timestep in range(1000):
-            action, action_value = self.chooseAction(observation, action_space)
-            observation, reward, terminated, truncated, info = env.step(action)
-            T += 1
-            if timestep == 0:
-                G = reward
-            else:
-                G += (self.gamma**timestep) * reward
-
-            qa_before = self.q[action](torch.tensor(observation))
+        while True:
+            qa_action = self.q[action](torch.tensor(observation))
+            observation_new, reward, terminated, truncated, info = env.step(action)
+            action_new, _ = self.chooseAction(observation_new, action_space)
+            qa_action_new = self.q[action_new](torch.tensor(observation_new))
+            u_target = qa_action_new  * self.gamma + reward
             if terminated or truncated:
                 print("environment terminated with info: ")
                 pprint(info)
-                self.update(action = action, target= 0.0, qa=qa_before)
-                observation, _ = env.reset()
+                self.update(action = action, target= reward, qa=qa_action)
+                env.reset()
+                T += 1
+                G += (self.gamma**T) * reward
                 break
-            u_target = qa_before  * self.gamma + reward
-            self.update(action= action, target= u_target, qa = qa_before)
+            self.update(action= action, target= u_target, qa = qa_action)
+            T += 1
+            G += (self.gamma**T) * reward
+            observation = observation_new
+            action = action_new
 
-            qa_after = self.q[action](torch.tensor(observation))
-            verified = self.verifyUpdate(qa_before_update= qa_before, qa_after_update= qa_after, target=u_target)
-            if not verified:
-                print("Warning! neural net activation did not move towards target!!")
 
 
 
