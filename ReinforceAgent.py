@@ -57,8 +57,7 @@ class Agent():
             divisor_activation = torch.clone(prob_action).detach()
             self.optim.zero_grad()
             loss = self.gamma**t * target * -torch.div(prob_action, divisor_activation)   
-            #gradient_standin = torch.tensor([1.0, 1.0], dtype=torch.float)
-            loss.backward() # pass gradient standin because we have a two dim tensor (activations) passed to it (vector jacobian) to pytorch autograd engine
+            loss.backward() 
             self.optim.step()
         else:
             activations = []
@@ -128,10 +127,11 @@ class Agent():
         actions = []
         while True:
             action = self.chooseAction(observation)
-            observation, reward, terminated, truncated, info = env.step(action)
+            next_observation, reward, terminated, truncated, info = env.step(action)
             rewards.append(reward)
             states.append(torch.tensor(observation).detach())
             actions.append(action)  
+            observation = next_observation
             T += 1
             if terminated or truncated:
                 print("environment terminated with info: ")
@@ -140,11 +140,11 @@ class Agent():
                 break
         
         discounted_rewards = np.zeros_like(rewards)
-        for i in reversed(range(len(rewards))):
-            G = G * self.gamma + rewards[i]
+        for i in reversed(range(len(rewards)-1)):
+            G = G * self.gamma + rewards[i+1]
             discounted_rewards[i] = G
 
-        for i in range(len(discounted_rewards)):
+        for i in reversed(range(len(discounted_rewards)-1)):
             self.update(t=i, action=actions[i], target=discounted_rewards[i], observation=states[i])
 
         # END YOUR CODE HERE
